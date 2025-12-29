@@ -26,7 +26,7 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
-camera.position.set(0, 5, 10);
+camera.position.set(0, 2, 4);
 
 // WebGLRenderer draws the scene to a canvas using WebGL
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -128,39 +128,20 @@ audioLoader.load(
 // Array to hold all cat instances for updating
 const cats: Cat[] = [];
 
-// Colors for our 5 cats
-const catColors = [
-  0xff6b6b, // Coral red
-  0x4ecdc4, // Teal
-  0xffe66d, // Yellow
-  0x95e1d3, // Mint
-  0xdda0dd  // Plum
-];
-
 /**
- * Creates 5 cats with random positions and different colors
+ * Creates a single grey cat in the center of the scene
  */
 function createCats(): void {
   // Clear existing cats
   cats.forEach(cat => scene.remove(cat.mesh));
   cats.length = 0;
 
-  catColors.forEach((color, index) => {
-    // Random position within a reasonable area
-    // We offset by index to ensure some spread even with same random seed
-    const x = (Math.random() - 0.5) * 12 + (index - 2) * 2;
-    const z = (Math.random() - 0.5) * 12;
-    const y = 0.4; // Slightly above ground (half the cat's height)
+  // Create one cat at the center
+  const position = new THREE.Vector3(0, 0, 0);
+  const cat = new Cat(position, audioListener, meowBuffer);
 
-    const position = new THREE.Vector3(x, y, z);
-    const cat = new Cat(color, position, audioListener, meowBuffer);
-
-    // Random rotation to make them face different directions
-    cat.mesh.rotation.y = Math.random() * Math.PI * 2;
-
-    cats.push(cat);
-    scene.add(cat.mesh);
-  });
+  cats.push(cat);
+  scene.add(cat.mesh);
 }
 
 // ============================================
@@ -265,5 +246,5 @@ instructions.style.cssText = `
   border-radius: 5px;
   pointer-events: none;
 `;
-instructions.textContent = 'Click on a cat to make it meow! Drag to orbit, scroll to zoom.';
+instructions.textContent = 'Click on the cat to make it meow! Drag to orbit, scroll to zoom.';
 document.body.appendChild(instructions);
