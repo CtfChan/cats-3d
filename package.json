@@ -1,0 +1,21 @@
+{
+  "name": "cats-3d",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "deploy": "tsc && vite build --base=/cats-3d/ && gh-pages -d dist"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vite": "^7.2.4"
+  },
+  "dependencies": {
+    "@types/three": "^0.182.0",
+    "gh-pages": "^6.3.0",
+    "three": "^0.182.0"
+  }
+}
