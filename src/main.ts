@@ -175,6 +175,12 @@ const mouse = new THREE.Vector2();
  * Handle mouse clicks to detect cat interactions
  */
 function onMouseClick(event: MouseEvent): void {
+  // Resume AudioContext on first user interaction (required by browser autoplay policy)
+  // Browsers block audio until user interacts with the page
+  if (audioListener.context.state === 'suspended') {
+    audioListener.context.resume();
+  }
+
   // Convert mouse position to normalized device coordinates (-1 to +1)
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
