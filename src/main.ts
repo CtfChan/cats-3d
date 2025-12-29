@@ -1,8 +1,8 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { Cat } from './Cat';
-import { CatTree } from './CatTree';
-import './style.css';
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { Cat } from "./Cat";
+import { CatTree } from "./CatTree";
+import "./style.css";
 
 /**
  * Three.js Cat Sound Toy
@@ -37,7 +37,7 @@ renderer.shadowMap.enabled = true; // Enable shadow rendering
 renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Soft shadow edges
 
 // Append canvas to the DOM
-const appElement = document.querySelector<HTMLDivElement>('#app')!;
+const appElement = document.querySelector<HTMLDivElement>("#app")!;
 appElement.appendChild(renderer.domElement);
 
 // ============================================
@@ -86,7 +86,7 @@ scene.add(directionalLight);
 const groundGeometry = new THREE.PlaneGeometry(30, 30);
 const groundMaterial = new THREE.MeshStandardMaterial({
   color: 0x7cba3d, // Grass green
-  roughness: 0.8
+  roughness: 0.8,
 });
 const ground = new THREE.Mesh(groundGeometry, groundMaterial);
 ground.rotation.x = -Math.PI / 2; // Rotate to be horizontal
@@ -114,17 +114,18 @@ const audioLoader = new THREE.AudioLoader();
 let meowBuffer: AudioBuffer | null = null;
 
 // Load the meow sound (will fail gracefully if file doesn't exist)
+// Use import.meta.env.BASE_URL to handle GitHub Pages deployment path
 audioLoader.load(
-  '/sounds/meow.mp3',
+  `${import.meta.env.BASE_URL}sounds/meow.mp3`,
   (buffer) => {
     meowBuffer = buffer;
-    console.log('Meow sound loaded successfully!');
+    console.log("Meow sound loaded successfully!");
     // Recreate cats with audio now that it's loaded
     createCats();
   },
   undefined,
   (error) => {
-    console.warn('Could not load meow.mp3 - cats will be silent:', error);
+    console.warn("Could not load meow.mp3 - cats will be silent:", error);
     // Still create cats, just without sound
     createCats();
   }
@@ -142,7 +143,7 @@ const cats: Cat[] = [];
  */
 function createCats(): void {
   // Clear existing cats
-  cats.forEach(cat => scene.remove(cat.mesh));
+  cats.forEach((cat) => scene.remove(cat.mesh));
   cats.length = 0;
 
   // Create one cat at the center
@@ -170,7 +171,7 @@ const mouse = new THREE.Vector2();
 function onMouseClick(event: MouseEvent): void {
   // Resume AudioContext on first user interaction (required by browser autoplay policy)
   // Browsers block audio until user interacts with the page
-  if (audioListener.context.state === 'suspended') {
+  if (audioListener.context.state === "suspended") {
     audioListener.context.resume();
   }
 
@@ -182,7 +183,7 @@ function onMouseClick(event: MouseEvent): void {
   raycaster.setFromCamera(mouse, camera);
 
   // Get all cat meshes for intersection testing
-  const catMeshes = cats.map(cat => cat.mesh);
+  const catMeshes = cats.map((cat) => cat.mesh);
   const intersects = raycaster.intersectObjects(catMeshes, true); // true = check children too
 
   if (intersects.length > 0) {
@@ -200,7 +201,7 @@ function onMouseClick(event: MouseEvent): void {
   }
 }
 
-window.addEventListener('click', onMouseClick);
+window.addEventListener("click", onMouseClick);
 
 // ============================================
 // WINDOW RESIZE HANDLING
@@ -212,7 +213,7 @@ function onWindowResize(): void {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-window.addEventListener('resize', onWindowResize);
+window.addEventListener("resize", onWindowResize);
 
 // ============================================
 // ANIMATION LOOP
@@ -232,7 +233,7 @@ function animate(): void {
   const deltaTime = clock.getDelta();
 
   // Update all cats (handles bounce animation)
-  cats.forEach(cat => cat.update(deltaTime));
+  cats.forEach((cat) => cat.update(deltaTime));
 
   // Update orbit controls (required for damping to work)
   controls.update();
@@ -245,18 +246,19 @@ function animate(): void {
 animate();
 
 // Add a helpful instruction overlay
-const instructions = document.createElement('div');
+const instructions = document.createElement("div");
 instructions.style.cssText = `
   position: absolute;
   top: 20px;
   left: 20px;
   color: white;
   font-family: sans-serif;
-  font-size: 14px;
+  font-size: 25px;
   background: rgba(0,0,0,0.5);
   padding: 10px 15px;
   border-radius: 5px;
   pointer-events: none;
 `;
-instructions.textContent = 'Click on the cat to make it meow! Drag to orbit, scroll to zoom.';
+instructions.textContent =
+  "Click on the cat to make it meow! Drag to orbit, scroll to zoom.";
 document.body.appendChild(instructions);
