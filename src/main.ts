@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Cat } from './Cat';
+import { CatTree } from './CatTree';
 import './style.css';
 
 /**
@@ -26,7 +27,7 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
-camera.position.set(0, 2, 4);
+camera.position.set(0, 4, 8);
 
 // WebGLRenderer draws the scene to a canvas using WebGL
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -93,6 +94,14 @@ ground.receiveShadow = true;
 scene.add(ground);
 
 // ============================================
+// CAT TREE
+// ============================================
+
+const catTreePosition = new THREE.Vector3(4, 0, -2);
+const catTree = new CatTree(catTreePosition);
+scene.add(catTree.mesh);
+
+// ============================================
 // AUDIO SETUP
 // ============================================
 
@@ -139,6 +148,9 @@ function createCats(): void {
   // Create one cat at the center
   const position = new THREE.Vector3(0, 0, 0);
   const cat = new Cat(position, audioListener, meowBuffer);
+
+  // Register the cat tree as an obstacle (radius ~1.2 to cover the base)
+  cat.addObstacle(catTreePosition, 1.2);
 
   cats.push(cat);
   scene.add(cat.mesh);

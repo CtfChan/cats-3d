@@ -24,6 +24,24 @@ export class Cat {
   private mouthClosedScaleY = 0.3;
   private mouthOpenScaleY = 1.2;
 
+  // Walking state
+  private walkSpeed = 0.8;
+  private targetPosition: THREE.Vector3 = new THREE.Vector3();
+  private walkTime = 0;
+  private idleTime = 0;
+  private isIdle = false;
+  private idleDuration = 0;
+  private boundaryRadius = 10; // How far cat can wander from center
+
+  // Obstacles to avoid (circular zones defined by position and radius)
+  private obstacles: Array<{ position: THREE.Vector3; radius: number }> = [];
+
+  // Leg references for walk animation
+  private frontLeftLeg: THREE.Mesh | null = null;
+  private frontRightLeg: THREE.Mesh | null = null;
+  private backLeftLeg: THREE.Mesh | null = null;
+  private backRightLeg: THREE.Mesh | null = null;
+
   constructor(
     position: THREE.Vector3,
     audioListener: THREE.AudioListener,
@@ -148,33 +166,33 @@ export class Cat {
     this.mesh.add(this.mouth);
 
     // ============================================
-    // LEGS - four cylinders
+    // LEGS - four cylinders (stored for walk animation)
     // ============================================
     const legGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.4, 8);
 
     // Front left leg
-    const frontLeftLeg = new THREE.Mesh(legGeometry, darkMaterial);
-    frontLeftLeg.position.set(-0.25, 0.2, 0.35);
-    frontLeftLeg.castShadow = true;
-    this.mesh.add(frontLeftLeg);
+    this.frontLeftLeg = new THREE.Mesh(legGeometry, darkMaterial);
+    this.frontLeftLeg.position.set(-0.25, 0.2, 0.35);
+    this.frontLeftLeg.castShadow = true;
+    this.mesh.add(this.frontLeftLeg);
 
     // Front right leg
-    const frontRightLeg = new THREE.Mesh(legGeometry, darkMaterial);
-    frontRightLeg.position.set(0.25, 0.2, 0.35);
-    frontRightLeg.castShadow = true;
-    this.mesh.add(frontRightLeg);
+    this.frontRightLeg = new THREE.Mesh(legGeometry, darkMaterial);
+    this.frontRightLeg.position.set(0.25, 0.2, 0.35);
+    this.frontRightLeg.castShadow = true;
+    this.mesh.add(this.frontRightLeg);
 
     // Back left leg
-    const backLeftLeg = new THREE.Mesh(legGeometry, darkMaterial);
-    backLeftLeg.position.set(-0.25, 0.2, -0.35);
-    backLeftLeg.castShadow = true;
-    this.mesh.add(backLeftLeg);
+    this.backLeftLeg = new THREE.Mesh(legGeometry, darkMaterial);
+    this.backLeftLeg.position.set(-0.25, 0.2, -0.35);
+    this.backLeftLeg.castShadow = true;
+    this.mesh.add(this.backLeftLeg);
 
     // Back right leg
-    const backRightLeg = new THREE.Mesh(legGeometry, darkMaterial);
-    backRightLeg.position.set(0.25, 0.2, -0.35);
-    backRightLeg.castShadow = true;
-    this.mesh.add(backRightLeg);
+    this.backRightLeg = new THREE.Mesh(legGeometry, darkMaterial);
+    this.backRightLeg.position.set(0.25, 0.2, -0.35);
+    this.backRightLeg.castShadow = true;
+    this.mesh.add(this.backRightLeg);
 
     // ============================================
     // TAIL - curved cylinder
@@ -192,6 +210,9 @@ export class Cat {
     // Store original Y position for animation
     this.originalY = position.y;
 
+    // Initialize walking target
+    this.pickNewTarget();
+
     // Setup positional audio if buffer is available
     if (audioBuffer) {
       this.sound = new THREE.PositionalAudio(audioListener);
@@ -200,6 +221,141 @@ export class Cat {
       this.sound.setVolume(0.8);
       this.mesh.add(this.sound);
     }
+  }
+
+  /**
+   * Add an obstacle for the cat to avoid
+   */
+  addObstacle(position: THREE.Vector3, radius: number): void {
+    this.obstacles.push({ position, radius });
+  }
+
+  /**
+   * Check if a position collides with any obstacle
+   */
+  private collidesWithObstacle(position: THREE.Vector3, buffer = 0.5): boolean {
+    for (const obstacle of this.obstacles) {
+      const dx = position.x - obstacle.position.x;
+      const dz = position.z - obstacle.position.z;
+      const distance = Math.sqrt(dx * dx + dz * dz);
+      if (distance < obstacle.radius + buffer) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Update walking behavior - moves cat toward target, handles idle time
+   */
+  private updateWalking(deltaTime: number): void {
+    if (this.isIdle) {
+      // Cat is resting, count down idle time
+      this.idleTime += deltaTime;
+      if (this.idleTime >= this.idleDuration) {
+        this.isIdle = false;
+        this.idleTime = 0;
+        this.pickNewTarget();
+      }
+      // Reset leg positions when idle
+      this.animateLegs(0);
+      return;
+    }
+
+    // Calculate direction to target
+    const direction = new THREE.Vector3();
+    direction.subVectors(this.targetPosition, this.mesh.position);
+    direction.y = 0; // Keep on ground plane
+    const distance = direction.length();
+
+    // Check if we've reached the target
+    if (distance < 0.2) {
+      this.isIdle = true;
+      this.animateLegs(0);
+      return;
+    }
+
+    // Normalize direction and move toward target
+    direction.normalize();
+
+    // Rotate cat to face movement direction
+    const targetAngle = Math.atan2(direction.x, direction.z);
+    // Smoothly rotate toward target angle
+    const currentAngle = this.mesh.rotation.y;
+    const angleDiff = targetAngle - currentAngle;
+    // Handle angle wrapping
+    const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+    this.mesh.rotation.y += normalizedDiff * deltaTime * 3;
+
+    // Calculate next position
+    const moveAmount = this.walkSpeed * deltaTime;
+    const nextPosition = new THREE.Vector3(
+      this.mesh.position.x + direction.x * moveAmount,
+      0,
+      this.mesh.position.z + direction.z * moveAmount
+    );
+
+    // Check for collision with obstacles
+    if (this.collidesWithObstacle(nextPosition)) {
+      // Pick a new target to walk around the obstacle
+      this.pickNewTarget();
+      return;
+    }
+
+    // Move toward target
+    this.mesh.position.x = nextPosition.x;
+    this.mesh.position.z = nextPosition.z;
+
+    // Update walk animation
+    this.walkTime += deltaTime * 8; // Speed of leg animation
+    this.animateLegs(this.walkTime);
+  }
+
+  /**
+   * Animate legs in a walking pattern
+   */
+  private animateLegs(time: number): void {
+    const legSwing = Math.sin(time) * 0.3;
+
+    // Front left and back right move together (diagonal pair)
+    if (this.frontLeftLeg) {
+      this.frontLeftLeg.rotation.x = legSwing;
+    }
+    if (this.backRightLeg) {
+      this.backRightLeg.rotation.x = legSwing;
+    }
+
+    // Front right and back left move together (opposite diagonal)
+    if (this.frontRightLeg) {
+      this.frontRightLeg.rotation.x = -legSwing;
+    }
+    if (this.backLeftLeg) {
+      this.backLeftLeg.rotation.x = -legSwing;
+    }
+  }
+
+  /**
+   * Pick a new random target position within the boundary, avoiding obstacles
+   */
+  private pickNewTarget(): void {
+    // Try up to 10 times to find a valid target
+    for (let attempts = 0; attempts < 10; attempts++) {
+      const angle = Math.random() * Math.PI * 2;
+      const distance = Math.random() * this.boundaryRadius;
+      const candidate = new THREE.Vector3(
+        Math.cos(angle) * distance,
+        0,
+        Math.sin(angle) * distance
+      );
+
+      // Check if this target is not inside an obstacle
+      if (!this.collidesWithObstacle(candidate, 0.8)) {
+        this.targetPosition.copy(candidate);
+        break;
+      }
+    }
+    // Set a random idle duration for when we reach the target (1-4 seconds)
+    this.idleDuration = 1 + Math.random() * 3;
   }
 
   /**
@@ -222,6 +378,11 @@ export class Cat {
     // Always animate the tail with a gentle sway
     if (this.tail) {
       this.tail.rotation.z = Math.sin(Date.now() * 0.003) * 0.3;
+    }
+
+    // Handle walking behavior (only when not doing meow animation)
+    if (!this.isAnimating) {
+      this.updateWalking(deltaTime);
     }
 
     if (!this.isAnimating) return;
